@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOMBONIERE DO EJC</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>🍬 BOMBONIERE DO EJC</h1>
+      <p>Controle de estoque, vendas e resultados</p>
+    </header>
+
+    <nav class="tabs" aria-label="Navegação principal">
+      <button class="tab active" data-screen="cadastro">Cadastro</button>
+      <button class="tab" data-screen="vendas">Vendas</button>
+      <button class="tab" data-screen="dashboard">Dashboard</button>
+    </nav>
+
+    <main class="container">
+      <section id="cadastro" class="screen active">
+        <h2>Cadastro de Doces</h2>
+        <form id="form-cadastro" class="card form-grid">
+          <label>
+            Nome do doce
+            <input type="text" id="nome" placeholder="Ex: Saco de Chocolate" required />
+          </label>
+
+          <label>
+            Quantidade de itens por saco
+            <input type="number" id="itensPorSaco" min="1" value="10" required />
+          </label>
+
+          <label>
+            Quantidade de sacos em estoque
+            <input type="number" id="qtdSacos" min="1" value="1" required />
+          </label>
+
+          <label>
+            Preço por item (R$)
+            <input type="number" id="precoItem" min="0" step="0.01" value="1.00" required />
+          </label>
+
+          <button type="submit">Cadastrar doce</button>
+        </form>
+
+        <form id="form-reposicao" class="card form-grid">
+          <label>
+            Repor estoque de
+            <select id="doceReposicao" required></select>
+          </label>
+
+          <label>
+            Quantidade de sacos para adicionar
+            <input type="number" id="qtdReposicao" min="1" value="1" required />
+          </label>
+
+          <button type="submit">Adicionar ao estoque</button>
+        </form>
+
+        <div class="card">
+          <h3>Doces cadastrados</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Doce</th>
+                  <th>Sacos</th>
+                  <th>Itens/Saco</th>
+                  <th>Itens Totais</th>
+                  <th>Preço Item</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-doces"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="vendas" class="screen">
+        <h2>Venda de Itens</h2>
+        <form id="form-venda" class="card form-grid">
+          <label>
+            Escolha o doce
+            <select id="doceVenda" required></select>
+          </label>
+
+          <label>
+            Quantidade de itens vendidos
+            <input type="number" id="qtdVendida" min="1" value="1" required />
+          </label>
+
+          <button type="submit">Registrar venda</button>
+        </form>
+
+        <div class="card">
+          <h3>Histórico de vendas</h3>
+          <ul id="lista-vendas" class="sales-list"></ul>
+        </div>
+      </section>
+
+      <section id="dashboard" class="screen">
+        <h2>Dashboard</h2>
+        <div class="actions-row">
+          <button id="btn-exportar" type="button">Exportar para Excel</button>
+          <button id="btn-zerar" type="button">Zerar dados</button>
+        </div>
+        <div class="metrics">
+          <article class="metric card">
+            <h3>Itens em estoque</h3>
+            <p id="m-estoque">0</p>
+          </article>
+          <article class="metric card">
+            <h3>Itens vendidos</h3>
+            <p id="m-vendidos">0</p>
+          </article>
+          <article class="metric card">
+            <h3>Faturamento (R$)</h3>
+            <p id="m-faturamento">0,00</p>
+          </article>
+          <article class="metric card">
+            <h3>Doces cadastrados</h3>
+            <p id="m-doces">0</p>
+          </article>
+        </div>
+
+        <div class="card">
+          <h3>Estoque por doce</h3>
+          <ul id="resumo-estoque" class="stock-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
