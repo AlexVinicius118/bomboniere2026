@@ -1,7 +1,12 @@
-const supabase = window.supabase.createClient(
-    "https://knephzmdcdljukyzdixe.supabase.co",
-    "sb_publishable_0tnBM__IZXdv4fCjiD8egQ__6bVD-jO"
-);
+const SUPABASE_URL = "https://gezkcgecyudkqareydhn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_DRyJOsPzwUqUQG46fOy1GQ_Bh1m2WUE";
+
+if (!window.supabase) {
+  alert("Biblioteca do Supabase não carregou. Recarregue a página.");
+  throw new Error("window.supabase não está disponível");
+}
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const state = {
     doces: [],
@@ -10,13 +15,13 @@ const state = {
 
 async function carregarDoces() {
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from("doces")
         .select("*")
         .order("nome");
 
     if (error) {
-        console.error(error);
+      mostrarErroSupabase(error, "carregar doces");
         return;
     }
 
@@ -25,7 +30,7 @@ async function carregarDoces() {
 
 async function carregarVendas() {
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from("vendas")
         .select("*")
         .order("data", {
@@ -33,11 +38,11 @@ async function carregarVendas() {
         });
 
     if (error) {
-        console.error(error);
+      mostrarErroSupabase(error, "carregar vendas");
         return;
     }
 
-    state.vendas = data;
+    state.vendas = data.map(normalizarVenda);
 }
 
 async function carregarTudo() {
@@ -48,6 +53,42 @@ async function carregarTudo() {
 
     render();
 
+}
+
+function normalizarVenda(venda) {
+  return {
+    id: venda.id,
+    doceId: venda.doce_id ?? venda.doceId,
+    doceNome: venda.doce_nome ?? venda.doceNome,
+    quantidade: Number(venda.quantidade ?? 0),
+    valorTotal: Number(venda.valor_total ?? venda.valorTotal ?? 0),
+    data: venda.data,
+  };
+}
+
+function mostrarErroSupabase(error, acao) {
+  console.error(`Erro ao ${acao}:`, error);
+
+  const detalhes = error?.message || "Erro desconhecido";
+  const codigo = error?.code ? ` (codigo ${error.code})` : "";
+  const extras = [error?.details, error?.hint].filter(Boolean).join(" | ");
+  const dicaRls =
+    error?.code === "42501" || error?.status === 401 || error?.status === 403
+      ? " Verifique as políticas RLS (SELECT/INSERT/UPDATE/DELETE) no Supabase."
+      : "";
+
+  alert(`Não foi possível ${acao}. ${detalhes}${codigo}.${dicaRls}${extras ? ` Detalhes: ${extras}` : ""}`);
+}
+
+async function testarConexaoSupabase() {
+  const { error } = await supabaseClient
+    .from("doces")
+    .select("id", { head: true, count: "exact" })
+    .limit(1);
+
+  if (error) {
+    mostrarErroSupabase(error, "validar conexão com o Supabase");
+  }
 }
 
 
@@ -66,7 +107,6 @@ const selectDoceReposicao = document.getElementById("doceReposicao");
 const listaVendas = document.getElementById("lista-vendas");
 const resumoEstoque = document.getElementById("resumo-estoque");
 const btnExportar = document.getElementById("btn-exportar");
-const btnZerar = document.getElementById("btn-zerar");
 
 const mEstoque = document.getElementById("m-estoque");
 const mVendidos = document.getElementById("m-vendidos");
@@ -76,6 +116,8 @@ const mDoces = document.getElementById("m-doces");
 init();
 
 async function init() {
+
+  await testarConexaoSupabase();
 
     setupTabs();
 
@@ -89,7 +131,6 @@ async function init() {
 
 function setupActions() {
   btnExportar.addEventListener("click", exportarParaExcel);
-  btnZerar.addEventListener("click", zerarDados);
 }
 
 function setupTabs() {
@@ -123,7 +164,7 @@ function setupForms() {
 
     try {
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from("doces")
         .insert({
             nome: nome,
@@ -146,19 +187,17 @@ function setupForms() {
 
 } catch (err) {
 
-    console.error(err);
-
-    alert("Erro ao cadastrar doce.");
+  mostrarErroSupabase(err, "cadastrar doce");
 
 }
   });
 
-  formVenda.addEventListener("submit", (event) => {
+  formVenda.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const id = selectDoceVenda.value;
     const qtdVendida = Number(document.getElementById("qtdVendida").value);
-    const doce = state.doces.find((item) => item.id === id);
+    const doce = state.doces.find((item) => String(item.id) === String(id));
 
     if (!doce) {
       alert("Selecione um doce para vender.");
@@ -175,29 +214,30 @@ function setupForms() {
       return;
     }
 
-    doce.estoque_itens -= qtdVendida;
-    state.vendas.unshift({
-      id: crypto.randomUUID(),
-      doceId: doce.id,
-      doceNome: doce.nome,
-      quantidade: qtdVendida,
-      valorTotal: qtdVendida * doce.preco_item,
-      data: new Date().toISOString(),
-    });
+    try {
+      const { error } = await supabaseClient.rpc("registrar_venda", {
+        p_doce_id: doce.id,
+        p_quantidade: qtdVendida,
+      });
 
-    persistState();
-    formVenda.reset();
-    document.getElementById("qtdVendida").value = 1;
+      if (error) {
+        throw error;
+      }
 
-    render();
+      formVenda.reset();
+      document.getElementById("qtdVendida").value = 1;
+      await carregarTudo();
+    } catch (error) {
+      mostrarErroSupabase(error, "registrar venda");
+    }
   });
 
-  formReposicao.addEventListener("submit", (event) => {
+  formReposicao.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const id = selectDoceReposicao.value;
     const qtdReposicao = Number(document.getElementById("qtdReposicao").value);
-    const doce = state.doces.find((item) => item.id === id);
+    const doce = state.doces.find((item) => String(item.id) === String(id));
 
     if (!doce) {
       alert("Selecione um doce para repor.");
@@ -209,14 +249,28 @@ function setupForms() {
       return;
     }
 
-    doce.qtd_sacos += qtdReposicao;
-    doce.estoque_itens += qtdReposicao * doce.itens_por_saco;
+    const novosSacos = Number(doce.qtd_sacos) + qtdReposicao;
+    const novoEstoque = Number(doce.estoque_itens) + qtdReposicao * Number(doce.itens_por_saco);
 
-    persistState();
-    formReposicao.reset();
-    document.getElementById("qtdReposicao").value = 1;
+    try {
+      const { error } = await supabaseClient
+        .from("doces")
+        .update({
+          qtd_sacos: novosSacos,
+          estoque_itens: novoEstoque,
+        })
+        .eq("id", doce.id);
 
-    render();
+      if (error) {
+        throw error;
+      }
+
+      formReposicao.reset();
+      document.getElementById("qtdReposicao").value = 1;
+      await carregarTudo();
+    } catch (error) {
+      mostrarErroSupabase(error, "repor estoque");
+    }
   });
 }
 
@@ -243,7 +297,7 @@ function renderDoces() {
       <td>${doce.qtd_sacos}</td>
       <td>${doce.itens_por_saco}</td>
       <td>${doce.estoque_itens}</td>
-      <td>${formatCurrency(doce.preco_item)}</td>
+      <td>${formatCurrency(Number(doce.preco_item))}</td>
     `;
     tabelaDoces.appendChild(row);
   });
@@ -348,14 +402,9 @@ function renderDashboard() {
 //   }
 // }
 
-// function persistState() {
-//   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-// }
-
 function exportarParaExcel() {
   if (!window.XLSX) {
-    exportarComoCsv();
-    alert("Exportado em CSV porque a biblioteca do Excel não carregou.");
+    alert("Não foi possível exportar em Excel agora. Recarregue a página e tente novamente.");
     return;
   }
 
@@ -376,7 +425,7 @@ function exportarParaExcel() {
     Sacos: doce.qtd_sacos,
     "Itens por saco": doce.itens_por_saco,
     "Itens em estoque": doce.estoque_itens,
-    "Preço por item (R$)": Number(doce.preco_item.toFixed(2)),
+    "Preço por item (R$)": Number(Number(doce.preco_item).toFixed(2)),
   }));
 
   const vendas = state.vendas.map((venda) => ({
@@ -401,73 +450,6 @@ function exportarParaExcel() {
   ).padStart(2, "0")}`;
 
   XLSX.writeFile(workbook, `estoque-doces-${dataArquivo}.xlsx`);
-}
-
-function exportarComoCsv() {
-  const linhas = [];
-
-  linhas.push(["ESTOQUE DE DOCES"]);
-  linhas.push(["Doce", "Sacos", "Itens por saco", "Itens em estoque", "Preco por item"]);
-
-  if (state.doces.length === 0) {
-    linhas.push(["Nenhum doce cadastrado", "", "", "", ""]);
-  } else {
-    state.doces.forEach((doce) => {
-      linhas.push([doce.nome, doce.qtd_sacos, doce.itens_por_saco, doce.estoque_itens, doce.preco_item.toFixed(2)]);
-    });
-  }
-
-  linhas.push([]);
-  linhas.push(["HISTORICO DE VENDAS"]);
-  linhas.push(["Data", "Doce", "Quantidade", "Valor total"]);
-
-  if (state.vendas.length === 0) {
-    linhas.push(["Nenhuma venda registrada", "", "", ""]);
-  } else {
-    state.vendas.forEach((venda) => {
-      linhas.push([
-        new Date(venda.data).toLocaleString("pt-BR"),
-        venda.doceNome,
-        venda.quantidade,
-        venda.valorTotal.toFixed(2),
-      ]);
-    });
-  }
-
-  const csv = linhas.map((linha) => linha.map(escapeCsv).join(";")).join("\r\n");
-  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const agora = new Date();
-  const dataArquivo = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(
-    agora.getDate()
-  ).padStart(2, "0")}`;
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `estoque-doces-${dataArquivo}.csv`;
-  link.click();
-
-  URL.revokeObjectURL(url);
-}
-
-function zerarDados() {
-  const confirmar = confirm("Tem certeza que deseja apagar todos os cadastros e vendas?");
-
-  if (!confirmar) {
-    return;
-  }
-
-  state.doces = [];
-  state.vendas = [];
-  persistState();
-  render();
-}
-
-function escapeCsv(valor) {
-  const texto = String(valor ?? "");
-  const escapado = texto.replace(/"/g, '""');
-  return `"${escapado}"`;
 }
 
 function formatCurrency(value) {
