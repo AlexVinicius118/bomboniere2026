@@ -87,6 +87,16 @@
           </label>
 
           <label>
+            Forma de pagamento
+            <select id="formaPagamento" required>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">Pix</option>
+              <option value="debito">Cartão de débito</option>
+              <option value="credito">Cartão de crédito</option>
+            </select>
+          </label>
+
+          <label>
             Quantidade de itens vendidos
             <input type="number" id="qtdVendida" min="1" value="1" required />
           </label>
@@ -122,6 +132,11 @@
             <h3>Doces cadastrados</h3>
             <p id="m-doces">0</p>
           </article>
+        </div>
+
+        <div class="card">
+          <h3>Pagamentos registrados</h3>
+          <ul id="resumo-pagamentos" class="stock-list"></ul>
         </div>
 
         <div class="card">
