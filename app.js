@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://gezkcgecyudkqareydhn.supabase.co";
-const SUPABASE_KEY = "sb_publishable_DRyJOsPzwUqUQG46fOy1GQ_Bh1m2WUE";
+const SUPABASE_URL = "https://hhdrmkoxnziysdonkavx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_2787c_C89KoqSi6-zzyNGw_Byh4rpBH";
 const STORAGE_KEY_FORMAS_PAGAMENTO = "bomboniere2026-formas-pagamento";
 
 if (!window.supabase) {
