@@ -91,7 +91,24 @@ function salvarFormasPagamentoLocais() {
 function mostrarErroSupabase(error, acao) {
   console.error(`Erro ao ${acao}:`, error);
 
-  const detalhes = error?.message || "Erro desconhecido";
+  const mensagem = error?.message || "Erro desconhecido";
+  const isFetchError =
+    mensagem.toLowerCase().includes("failed to fetch") ||
+    mensagem.toLowerCase().includes("networkerror") ||
+    mensagem.toLowerCase().includes("fetch");
+
+  if (isFetchError) {
+    alert(
+      `Não foi possível ${acao}.\n\n` +
+      `Erro de conexão com o banco de dados (Failed to fetch).\n\n` +
+      `Causas mais comuns:\n` +
+      `• Projeto Supabase pausado — acesse supabase.com/dashboard, abra o projeto e clique em "Restore project".\n` +
+      `• Sem conexão com a internet.\n\n` +
+      `Após restaurar o projeto, recarregue a página.`
+    );
+    return;
+  }
+
   const codigo = error?.code ? ` (codigo ${error.code})` : "";
   const extras = [error?.details, error?.hint].filter(Boolean).join(" | ");
   const dicaRls =
@@ -99,7 +116,7 @@ function mostrarErroSupabase(error, acao) {
       ? " Verifique as políticas RLS (SELECT/INSERT/UPDATE/DELETE) no Supabase."
       : "";
 
-  alert(`Não foi possível ${acao}. ${detalhes}${codigo}.${dicaRls}${extras ? ` Detalhes: ${extras}` : ""}`);
+  alert(`Não foi possível ${acao}. ${mensagem}${codigo}.${dicaRls}${extras ? ` Detalhes: ${extras}` : ""}`);
 }
 
 async function testarConexaoSupabase() {
